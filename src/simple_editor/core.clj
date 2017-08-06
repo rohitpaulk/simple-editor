@@ -1,11 +1,12 @@
 (ns simple-editor.core)
 
-(defn foo
-  "I don't do a whole lot."
-  [x]
-  (println x "Hello, World!"))
+(defn open-editor
+  "Opens the editor with the given file"
+  [file-path]
+  (println (format "Here are the contents from (%s)\n" file-path))
+  (println (slurp file-path)))
 
 (defn -main
   "Entry point"
   []
-  (foo "testing"))
+  (open-editor "resources/foo.txt"))
