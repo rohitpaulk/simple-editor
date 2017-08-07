@@ -14,9 +14,9 @@
   (t/move-cursor term (:x cursor) (:y cursor)))
 
 (defn str-insert
-    "Insert c in string s at index i."
-      [s c i]
-        (str (subs s 0 i) c (subs s i)))
+    "Insert char in string at index i."
+      [string char i]
+        (str (subs string 0 i) char (subs string i)))
 
 (defn process-char
   "
@@ -29,6 +29,39 @@
         new-cursor (assoc cursor :x (+ (:x cursor) 1))]
     {:lines new-lines :cursor new-cursor}))
 
+(defn process-down
+  [char {:keys [lines cursor]}]
+
+  (let [max-y (count lines)
+        new-y (+ (:y cursor) 1)
+        new-cursor (assoc cursor :y (min max-y new-y))]
+    {:lines lines :cursor new-cursor}))
+
+(defn process-up
+  [char {:keys [lines cursor]}]
+
+  (let [min-y 0
+        new-y (- (:y cursor) 1)
+        new-cursor (assoc cursor :y (max min-y new-y))]
+    {:lines lines :cursor new-cursor}))
+
+(defn process-left
+  [char {:keys [lines cursor]}]
+
+  (let [min-x 0
+        new-x (- (:x cursor) 1)
+        new-cursor (assoc cursor :x (max min-x new-x))]
+    {:lines lines :cursor new-cursor}))
+
+(defn process-right
+  [char {:keys [lines cursor]}]
+
+  (let [current-line (nth lines (:y cursor))
+        max-x (count current-line)
+        new-x (+ (:x cursor) 1)
+        new-cursor (assoc cursor :x (min max-x new-x))]
+    {:lines lines :cursor new-cursor}))
+
 (defn process-key
   "
   Processes one input character from the terminal.
@@ -36,8 +69,20 @@
   Returns the new state.
   "
   [key state]
-  ; TODO: Process other stuff?
-  (process-char key, state))
+
+  (defn is-char [x] (= java.lang.Character (type x)))
+  (defn is-up [x] (= :up x))
+  (defn is-down [x] (= :down x))
+  (defn is-right [x] (= :right x))
+  (defn is-left [x] (= :left x))
+
+  (cond
+    (is-char key) (process-char key state)
+    (is-left key) (process-left key state)
+    (is-right key) (process-right key state)
+    (is-up key) (process-up key state)
+    (is-down key) (process-down key state)
+    :else state))
 
 (defn -get-lines
   "Returns an array of lines, given a file path"
@@ -45,7 +90,7 @@
   (def file-contents (slurp file-path))
   (clojure.string/split-lines file-contents))
 
-(defn processable-keys
+(defn get-key-stream
   "Returns a lazy sequence that terminates when a user presses escape"
   [term]
 
@@ -56,10 +101,7 @@
   (defn da-func []
     (nil-if-escape (t/get-key-blocking  term)))
 
-  (defn is-char [x]
-    (not= clojure.lang.Keyword (type x)))
-
-  (filter is-char (take-while identity (repeatedly da-func))))
+  (take-while identity (repeatedly da-func)))
 
 (defn open-editor
   "Opens the editor with the given file"
@@ -70,7 +112,7 @@
   (def term (t/get-terminal :unix))
   (t/in-terminal term
     (render term state)
-    (doseq [key (processable-keys term)]
+    (doseq [key (get-key-stream term)]
       (def state (process-key key state))
       (render term state))))
 
