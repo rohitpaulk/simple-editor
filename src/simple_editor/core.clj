@@ -6,11 +6,7 @@
   "Renders lines + cursor to the terminal"
   [term, {:keys [lines, cursor]}]
   (t/clear term)
-  (defn put-line
-    "Writes the string to a terminal and prints a newline"
-    [line]
-    (t/put-string term (str line "\n")))
-  (dorun (map put-line lines))
+  (t/put-string term (clojure.string/join "\n" lines))
   (t/move-cursor term (:x cursor) (:y cursor)))
 
 (defn str-insert
