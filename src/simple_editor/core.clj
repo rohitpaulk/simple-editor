@@ -27,17 +27,19 @@
 
 (defn clamp-cursor
   [cursor lines]
-  (let [current-line (or (get lines (:y cursor) ""))
-        min-x 0
-        min-y 0
-        max-x (count current-line)
-        max-y (count lines)
+  (let [y (:y cursor)
         x (:x cursor)
-        y (:y cursor)]
-    {:x (max (min max-x x) min-x) :y (max (min max-y y) min-y)}))
+        min-y 0
+        max-y (count lines)
+        clamped-y (max (min max-y y) min-y)
+        current-line (or (get lines clamped-y ""))
+        min-x 0
+        max-x (count current-line)
+        clamped-x (max (min max-x x) min-x)]
+    {:x clamped-x :y clamped-y}))
 
 (defn process-down
-  [char {:keys [lines cursor]}]
+  [_ {:keys [lines cursor]}]
 
   (def new-cursor (assoc cursor :y (+ (:y cursor) 1)))
   (def new-cursor (clamp-cursor new-cursor lines))
@@ -45,7 +47,7 @@
   {:lines lines :cursor new-cursor})
 
 (defn process-up
-  [char {:keys [lines cursor]}]
+  [_ {:keys [lines cursor]}]
 
   (def new-cursor (assoc cursor :y (- (:y cursor) 1)))
   (def new-cursor (clamp-cursor new-cursor lines))
@@ -53,7 +55,7 @@
   {:lines lines :cursor new-cursor})
 
 (defn process-left
-  [char {:keys [lines cursor]}]
+  [_ {:keys [lines cursor]}]
 
   (def new-cursor (assoc cursor :x (- (:x cursor) 1)))
   (def new-cursor (clamp-cursor new-cursor lines))
@@ -61,12 +63,33 @@
   {:lines lines :cursor new-cursor})
 
 (defn process-right
-  [char {:keys [lines cursor]}]
+  [_ {:keys [lines cursor]}]
 
   (def new-cursor (assoc cursor :x (+ (:x cursor) 1)))
   (def new-cursor (clamp-cursor new-cursor lines))
 
   {:lines lines :cursor new-cursor})
+
+(defn remove-char
+  [string pos]
+  (if (= pos 0)
+    string
+    (str (subs string 0 (dec pos)) (subs string pos))))
+
+(defn process-backspace
+  [_ {:keys [lines cursor]}]
+
+  (def y (:y cursor))
+  (def x (:x cursor))
+
+  (if (> y (count lines))
+    {:lines lines :cursor cursor} ; Nothing to do if user is on last line
+    (let [current-line (nth lines y)
+          new-line (remove-char current-line x)
+          new-lines (assoc lines y new-line)
+          new-cursor (assoc cursor :x (- (:x cursor) 1))
+          new-cursor (clamp-cursor new-cursor lines)]
+     {:lines new-lines :cursor new-cursor})))
 
 (defn process-key
   "
@@ -77,6 +100,7 @@
   [key state]
 
   (defn is-char [x] (= java.lang.Character (type x)))
+  (defn is-backspace [x] (= :backspace x))
   (defn is-up [x] (= :up x))
   (defn is-down [x] (= :down x))
   (defn is-right [x] (= :right x))
@@ -88,6 +112,7 @@
     (is-right key) (process-right key state)
     (is-up key) (process-up key state)
     (is-down key) (process-down key state)
+    (is-backspace key) (process-backspace key state)
     :else state))
 
 (defn -get-lines
