@@ -82,12 +82,28 @@
   (def y (:y cursor))
   (def x (:x cursor))
 
-  (let [current-line (nth lines y)
-        new-line (remove-char current-line x)
-        new-lines (assoc lines y new-line)
-        new-cursor (assoc cursor :x (- (:x cursor) 1))
-        new-cursor (clamp-cursor new-cursor lines)]
-   {:lines new-lines :cursor new-cursor}))
+  (def is-line-start (= 0 x))
+  (def is-first-line (= 0 y))
+  (def should-collapse (and is-line-start (not is-first-line)))
+
+  (if should-collapse
+    (let [[before, after] (split-at (inc y) lines)
+          current-line (first after)
+          previous-line (last before)
+          merged-line (clojure.string/join "" [current-line previous-line])
+          new-before (assoc (into [] before) y merged-line)
+          new-after (pop (into [] after))
+          new-lines (into [] (concat new-before new-after))
+          new-cursor {:x 0 :y (inc (:y cursor))}]
+      {:lines new-lines :cursor new-cursor})
+
+    ; Else, we just remove a single character
+    (let [current-line (nth lines y)
+          new-line (remove-char current-line x)
+          new-lines (assoc lines y new-line)
+          new-cursor (assoc cursor :x (- (:x cursor) 1))
+          new-cursor (clamp-cursor new-cursor lines)]
+     {:lines new-lines :cursor new-cursor})))
 
 (defn process-enter
   [_ {:keys [lines cursor]}]
