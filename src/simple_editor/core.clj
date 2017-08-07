@@ -29,38 +29,48 @@
         new-cursor (assoc cursor :x (+ (:x cursor) 1))]
     {:lines new-lines :cursor new-cursor}))
 
+(defn clamp-cursor
+  [cursor lines]
+  (let [current-line (or (get lines (:y cursor) ""))
+        min-x 0
+        min-y 0
+        max-x (count current-line)
+        max-y (count lines)
+        x (:x cursor)
+        y (:y cursor)]
+    {:x (max (min max-x x) min-x) :y (max (min max-y y) min-y)}))
+
 (defn process-down
   [char {:keys [lines cursor]}]
 
-  (let [max-y (count lines)
-        new-y (+ (:y cursor) 1)
-        new-cursor (assoc cursor :y (min max-y new-y))]
-    {:lines lines :cursor new-cursor}))
+  (def new-cursor (assoc cursor :y (+ (:y cursor) 1)))
+  (def new-cursor (clamp-cursor new-cursor lines))
+
+  {:lines lines :cursor new-cursor})
 
 (defn process-up
   [char {:keys [lines cursor]}]
 
-  (let [min-y 0
-        new-y (- (:y cursor) 1)
-        new-cursor (assoc cursor :y (max min-y new-y))]
-    {:lines lines :cursor new-cursor}))
+  (def new-cursor (assoc cursor :y (- (:y cursor) 1)))
+  (def new-cursor (clamp-cursor new-cursor lines))
+
+  {:lines lines :cursor new-cursor})
 
 (defn process-left
   [char {:keys [lines cursor]}]
 
-  (let [min-x 0
-        new-x (- (:x cursor) 1)
-        new-cursor (assoc cursor :x (max min-x new-x))]
-    {:lines lines :cursor new-cursor}))
+  (def new-cursor (assoc cursor :x (- (:x cursor) 1)))
+  (def new-cursor (clamp-cursor new-cursor lines))
+
+  {:lines lines :cursor new-cursor})
 
 (defn process-right
   [char {:keys [lines cursor]}]
 
-  (let [current-line (nth lines (:y cursor))
-        max-x (count current-line)
-        new-x (+ (:x cursor) 1)
-        new-cursor (assoc cursor :x (min max-x new-x))]
-    {:lines lines :cursor new-cursor}))
+  (def new-cursor (assoc cursor :x (+ (:x cursor) 1)))
+  (def new-cursor (clamp-cursor new-cursor lines))
+
+  {:lines lines :cursor new-cursor})
 
 (defn process-key
   "
