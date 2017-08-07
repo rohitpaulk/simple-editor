@@ -14,9 +14,9 @@
   (t/move-cursor term (:x cursor) (:y cursor)))
 
 (defn str-insert
-    "Insert char in string at index i."
-      [string char i]
-        (str (subs string 0 i) char (subs string i)))
+  "Insert char in string at index i."
+  [string char i]
+  (str (subs string 0 i) char (subs string i)))
 
 (defn process-char
   "
