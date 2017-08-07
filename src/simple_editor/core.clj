@@ -30,9 +30,9 @@
   (let [y (:y cursor)
         x (:x cursor)
         min-y 0
-        max-y (count lines)
+        max-y (dec (count lines))
         clamped-y (max (min max-y y) min-y)
-        current-line (or (get lines clamped-y ""))
+        current-line (get lines clamped-y "")
         min-x 0
         max-x (count current-line)
         clamped-x (max (min max-x x) min-x)]
@@ -82,14 +82,25 @@
   (def y (:y cursor))
   (def x (:x cursor))
 
-  (if (> y (count lines))
-    {:lines lines :cursor cursor} ; Nothing to do if user is on last line
-    (let [current-line (nth lines y)
-          new-line (remove-char current-line x)
-          new-lines (assoc lines y new-line)
-          new-cursor (assoc cursor :x (- (:x cursor) 1))
-          new-cursor (clamp-cursor new-cursor lines)]
-     {:lines new-lines :cursor new-cursor})))
+  (let [current-line (nth lines y)
+        new-line (remove-char current-line x)
+        new-lines (assoc lines y new-line)
+        new-cursor (assoc cursor :x (- (:x cursor) 1))
+        new-cursor (clamp-cursor new-cursor lines)]
+   {:lines new-lines :cursor new-cursor}))
+
+(defn process-enter
+  [_ {:keys [lines cursor]}]
+
+  (def current-line (nth lines (:y cursor)))
+  (def replaced-line-contents (subs current-line 0 (:x cursor)))
+  (def next-lines-contents (subs current-line (:x cursor)))
+
+  (def new-lines (assoc lines (:y cursor) replaced-line-contents))
+  (let [[before, after] (split-at (inc (:y cursor)) new-lines)
+        new-lines (into [] (concat before [next-lines-contents] after))
+        new-cursor {:x 0 :y (inc (:y cursor))}]
+    {:lines new-lines :cursor new-cursor}))
 
 (defn process-key
   "
@@ -101,6 +112,7 @@
 
   (defn is-char [x] (= java.lang.Character (type x)))
   (defn is-backspace [x] (= :backspace x))
+  (defn is-enter [x] (= :enter x))
   (defn is-up [x] (= :up x))
   (defn is-down [x] (= :down x))
   (defn is-right [x] (= :right x))
@@ -113,6 +125,7 @@
     (is-up key) (process-up key state)
     (is-down key) (process-down key state)
     (is-backspace key) (process-backspace key state)
+    (is-enter key) (process-enter key state)
     :else state))
 
 (defn -get-lines
