@@ -6,5 +6,6 @@
   :dependencies [
                  [org.clojure/clojure "1.8.0"]
                  [clojure-lanterna "0.9.7"]
+                 [com.taoensso/encore "2.91.1"]
                 ]
   :main simple-editor.core)

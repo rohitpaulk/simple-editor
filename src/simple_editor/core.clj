@@ -1,6 +1,7 @@
 (ns simple-editor.core)
 
 (require '[lanterna.terminal :as t])
+(require '[taoensso.encore :as encore])
 
 (defn render
   "Renders lines + cursor to the terminal"
@@ -29,13 +30,9 @@
   [cursor lines]
   (let [y (:y cursor)
         x (:x cursor)
-        min-y 0
-        max-y (dec (count lines))
-        clamped-y (max (min max-y y) min-y)
+        clamped-y (encore/clamp 0 (dec (count lines)) y)
         current-line (get lines clamped-y "")
-        min-x 0
-        max-x (count current-line)
-        clamped-x (max (min max-x x) min-x)]
+        clamped-x (encore/clamp 0 (count current-line) x)]
     {:x clamped-x :y clamped-y}))
 
 (defn process-down
