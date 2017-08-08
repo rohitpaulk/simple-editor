@@ -38,34 +38,30 @@
 (defn process-down
   [_ {:keys [lines cursor]}]
 
-  (def new-cursor (assoc cursor :y (+ (:y cursor) 1)))
-  (def new-cursor (clamp-cursor new-cursor lines))
-
-  {:lines lines :cursor new-cursor})
+  (let [new-cursor (assoc cursor :y (inc (:y cursor)))
+        new-cursor (clamp-cursor new-cursor lines)]
+    {:lines lines :cursor new-cursor}))
 
 (defn process-up
   [_ {:keys [lines cursor]}]
 
-  (def new-cursor (assoc cursor :y (- (:y cursor) 1)))
-  (def new-cursor (clamp-cursor new-cursor lines))
-
-  {:lines lines :cursor new-cursor})
+  (let [new-cursor (assoc cursor :y (dec (:y cursor)))
+        new-cursor (clamp-cursor new-cursor lines)]
+    {:lines lines :cursor new-cursor}))
 
 (defn process-left
   [_ {:keys [lines cursor]}]
 
-  (def new-cursor (assoc cursor :x (- (:x cursor) 1)))
-  (def new-cursor (clamp-cursor new-cursor lines))
-
-  {:lines lines :cursor new-cursor})
+  (let [new-cursor (assoc cursor :x (dec (:x cursor)))
+        new-cursor (clamp-cursor new-cursor lines)]
+    {:lines lines :cursor new-cursor}))
 
 (defn process-right
   [_ {:keys [lines cursor]}]
 
-  (def new-cursor (assoc cursor :x (+ (:x cursor) 1)))
-  (def new-cursor (clamp-cursor new-cursor lines))
-
-  {:lines lines :cursor new-cursor})
+  (let [new-cursor (assoc cursor :x (inc (:x cursor)))
+        new-cursor (clamp-cursor new-cursor lines)]
+    {:lines lines :cursor new-cursor}))
 
 (defn remove-char
   [string pos]
@@ -76,40 +72,38 @@
 (defn process-backspace
   [_ {:keys [lines cursor]}]
 
-  (def y (:y cursor))
-  (def x (:x cursor))
+  (let [y (:y cursor)
+        x (:x cursor)
+        is-line-start (= 0 x)
+        is-first-line (= 0 y)
+        should-collapse (and is-line-start (not is-first-line))]
 
-  (def is-line-start (= 0 x))
-  (def is-first-line (= 0 y))
-  (def should-collapse (and is-line-start (not is-first-line)))
+    (if should-collapse
+      (let [current-line (nth lines y)
+            previous-line (nth lines (dec y))
+            merged-line (clojure.string/join "" [previous-line current-line])
+            new-lines (assoc lines y [merged-line])
+            new-lines (assoc new-lines (dec y) [])
+            new-lines (into [] (flatten new-lines))
+            new-cursor {:x (count previous-line) :y (dec (:y cursor))}]
+        {:lines new-lines :cursor new-cursor})
 
-  (if should-collapse
-    (let [current-line (nth lines y)
-          previous-line (nth lines (dec y))
-          merged-line (clojure.string/join "" [previous-line current-line])
-          new-lines (assoc lines y [merged-line])
-          new-lines (assoc new-lines (dec y) [])
-          new-lines (into [] (flatten new-lines))
-          new-cursor {:x (count previous-line) :y (dec (:y cursor))}]
-      {:lines new-lines :cursor new-cursor})
-
-    ; Else, we just remove a single character
-    (let [current-line (nth lines y)
-          new-line (remove-char current-line x)
-          new-lines (assoc lines y new-line)
-          new-cursor (assoc cursor :x (- (:x cursor) 1))
-          new-cursor (clamp-cursor new-cursor lines)]
-     {:lines new-lines :cursor new-cursor})))
+      ; Else, we just remove a single character
+      (let [current-line (nth lines y)
+            new-line (remove-char current-line x)
+            new-lines (assoc lines y new-line)
+            new-cursor (assoc cursor :x (- (:x cursor) 1))
+            new-cursor (clamp-cursor new-cursor lines)]
+       {:lines new-lines :cursor new-cursor}))))
 
 (defn process-enter
   [_ {:keys [lines cursor]}]
 
-  (def current-line (nth lines (:y cursor)))
-  (def replaced-line-contents (subs current-line 0 (:x cursor)))
-  (def next-lines-contents (subs current-line (:x cursor)))
-
-  (def new-lines (assoc lines (:y cursor) replaced-line-contents))
-  (let [[before, after] (split-at (inc (:y cursor)) new-lines)
+  (let [current-line (nth lines (:y cursor))
+        replaced-line-contents (subs current-line 0 (:x cursor))
+        next-lines-contents (subs current-line (:x cursor))
+        new-lines (assoc lines (:y cursor) replaced-line-contents)
+        [before, after] (split-at (inc (:y cursor)) new-lines)
         new-lines (into [] (concat before [next-lines-contents] after))
         new-cursor {:x 0 :y (inc (:y cursor))}]
     {:lines new-lines :cursor new-cursor}))
@@ -122,10 +116,8 @@
   "
   [key state]
 
-  (defn is-char [x] (= java.lang.Character (type x)))
-
   (cond
-    (is-char key) (process-char key state)
+    (= java.lang.Character (type key)) (process-char key state)
     (= :left key) (process-left key state)
     (= :right key) (process-right key state)
     (= :up key) (process-up key state)
@@ -137,34 +129,28 @@
 (defn -get-lines
   "Returns an array of lines, given a file path"
   [file-path]
-  (def file-contents (slurp file-path))
-  (clojure.string/split-lines file-contents))
+  (clojure.string/split-lines (slurp file-path)))
 
 (defn get-key-stream
   "Returns a lazy sequence that terminates when a user presses escape"
   [term]
 
-  (defn nil-if-escape
-    [key]
-    (if (= key :escape) nil key))
-
-  (defn da-func []
-    (nil-if-escape (t/get-key-blocking  term)))
-
-  (take-while identity (repeatedly da-func)))
+  (letfn [(nil-if-escape [key] (if (= key :escape) nil key))
+          (da-func [] (nil-if-escape (t/get-key-blocking  term)))]
+    (take-while identity (repeatedly da-func))))
 
 (defn open-editor
   "Opens the editor with the given file"
   [file-path]
-  (def lines (-get-lines file-path))
-  (def cursor {:x 0 :y 0})
-  (def state {:lines lines :cursor cursor})
-  (def term (t/get-terminal :unix))
-  (t/in-terminal term
-    (render term state)
-    (doseq [key (get-key-stream term)]
-      (def state (process-key key state))
-      (render term state))))
+  (let [lines (-get-lines file-path)
+        cursor {:x 0 :y 0}
+        term (t/get-terminal :unix)]
+    (t/in-terminal term
+      (def state {:lines lines :cursor cursor})
+      (render term state)
+      (doseq [key (get-key-stream term)]
+        (def state (process-key key state))
+        (render term state)))))
 
 (defn -main
   "Entry point"
