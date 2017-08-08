@@ -126,21 +126,15 @@
   [key state]
 
   (defn is-char [x] (= java.lang.Character (type x)))
-  (defn is-backspace [x] (= :backspace x))
-  (defn is-enter [x] (= :enter x))
-  (defn is-up [x] (= :up x))
-  (defn is-down [x] (= :down x))
-  (defn is-right [x] (= :right x))
-  (defn is-left [x] (= :left x))
 
   (cond
     (is-char key) (process-char key state)
-    (is-left key) (process-left key state)
-    (is-right key) (process-right key state)
-    (is-up key) (process-up key state)
-    (is-down key) (process-down key state)
-    (is-backspace key) (process-backspace key state)
-    (is-enter key) (process-enter key state)
+    (= :left key) (process-left key state)
+    (= :right key) (process-right key state)
+    (= :up key) (process-up key state)
+    (= :down key) (process-down key state)
+    (= :backspace key) (process-backspace key state)
+    (= :enter key) (process-enter key state)
     :else state))
 
 (defn -get-lines
