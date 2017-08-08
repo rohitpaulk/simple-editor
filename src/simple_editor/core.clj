@@ -87,14 +87,13 @@
   (def should-collapse (and is-line-start (not is-first-line)))
 
   (if should-collapse
-    (let [[before, after] (split-at (inc y) lines)
-          current-line (first after)
-          previous-line (last before)
-          merged-line (clojure.string/join "" [current-line previous-line])
-          new-before (assoc (into [] before) y merged-line)
-          new-after (pop (into [] after))
-          new-lines (into [] (concat new-before new-after))
-          new-cursor {:x 0 :y (inc (:y cursor))}]
+    (let [current-line (nth lines y)
+          previous-line (nth lines (dec y))
+          merged-line (clojure.string/join "" [previous-line current-line])
+          new-lines (assoc lines y [merged-line])
+          new-lines (assoc new-lines (dec y) [])
+          new-lines (into [] (flatten new-lines))
+          new-cursor {:x (count previous-line) :y (dec (:y cursor))}]
       {:lines new-lines :cursor new-cursor})
 
     ; Else, we just remove a single character
