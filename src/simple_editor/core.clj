@@ -131,26 +131,25 @@
   [file-path]
   (clojure.string/split-lines (slurp file-path)))
 
-(defn get-key-stream
-  "Returns a lazy sequence that terminates when a user presses escape"
-  [term]
-
-  (letfn [(nil-if-escape [key] (if (= key :escape) nil key))
-          (da-func [] (nil-if-escape (t/get-key-blocking  term)))]
-    (take-while identity (repeatedly da-func))))
+(defn editor-loop
+  [term state]
+  (let [key (t/get-key-blocking term)]
+    (cond
+      (= :escape key) nil ; Terminate loop
+      :else (let [next-state (process-key key state)]
+              (render term next-state)
+              (editor-loop term next-state)))))
 
 (defn open-editor
   "Opens the editor with the given file"
   [file-path]
   (let [lines (-get-lines file-path)
         cursor {:x 0 :y 0}
-        term (t/get-terminal :unix)]
+        term (t/get-terminal :unix)
+        state {:lines lines :cursor cursor}]
     (t/in-terminal term
-      (def state {:lines lines :cursor cursor})
       (render term state)
-      (doseq [key (get-key-stream term)]
-        (def state (process-key key state))
-        (render term state)))))
+      (editor-loop term state))))
 
 (defn -main
   "Entry point"
