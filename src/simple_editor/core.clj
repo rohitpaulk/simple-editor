@@ -133,12 +133,13 @@
 
 (defn editor-loop
   [term state]
-  (let [key (t/get-key-blocking term)]
-    (cond
-      (= :escape key) nil ; Terminate loop
-      :else (let [next-state (process-key key state)]
-              (render term next-state)
-              (editor-loop term next-state)))))
+  (loop [term term state state]
+    (let [key (t/get-key-blocking term)]
+      (cond
+        (= :escape key) nil ; Terminate loop
+        :else (let [next-state (process-key key state)]
+                (render term next-state)
+                (recur term next-state))))))
 
 (defn open-editor
   "Opens the editor with the given file"
